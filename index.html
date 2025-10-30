@@ -6,6 +6,7 @@
   <title>Countdown</title>
 
   <style>
+    /* ========== PAGE STYLING ========== */
     body {
       margin: 0;
       height: 100vh;
@@ -18,6 +19,7 @@
       color: #444;
     }
 
+    /* ========== COUNTDOWN CONTAINER ========== */
     .countdown-container {
       position: relative;
       z-index: 2;
@@ -27,20 +29,31 @@
       border-radius: 20px;
       padding: 2rem 3rem;
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-      max-width: 90%;
+    }
+
+    .title {
+      font-size: 1.4rem;
+      font-weight: 500;
+      margin-bottom: 1rem;
+      color: #b85ca8;
     }
 
     .timer {
       font-size: 2.2rem;
       letter-spacing: 2px;
       color: #d46ba0;
-      white-space: nowrap;
+      white-space: nowrap; /* force single line */
     }
 
+    /* Responsive: shrink text if too long */
     @media (max-width: 500px) {
       .timer { font-size: 1.8rem; }
     }
+    @media (max-width: 400px) {
+      .timer { font-size: 1.5rem; }
+    }
 
+    /* ========== 3D HEART CANVAS ========== */
     #heart-canvas {
       position: absolute;
       top: 50%;
@@ -53,18 +66,21 @@
   </style>
 </head>
 <body>
+
+  <!-- 3D HEART BACKGROUND -->
   <canvas id="heart-canvas"></canvas>
 
+  <!-- COUNTDOWN UI -->
   <div class="countdown-container">
+    <!--<div class="title">Countdown to December 22, 12:30</div>-->
     <div id="timer" class="timer">Loading...</div>
   </div>
 
+  <!-- Load Three.js -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/loaders/FontLoader.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/geometries/TextGeometry.min.js"></script>
 
   <script>
-    /* ========== COUNTDOWN ========== */
+    /* ========== COUNTDOWN LOGIC ========== */
     const timerEl = document.getElementById("timer");
     const targetDate = new Date("2025-12-22T12:50:00");
 
@@ -72,7 +88,7 @@
       const now = new Date();
       const diff = targetDate - now;
       if (diff <= 0) {
-        timerEl.textContent = "❤️";
+        timerEl.textContent = "やっと会える！❤️";
         clearInterval(interval);
         return;
       }
@@ -85,7 +101,7 @@
     const interval = setInterval(updateCountdown, 1000);
     updateCountdown();
 
-    /* ========== THREE.JS HEART SCENE ========== */
+    /* ========== THREE.JS HEART SETUP ========== */
     const canvas = document.getElementById("heart-canvas");
     const scene = new THREE.Scene();
 
@@ -96,19 +112,18 @@
     renderer.setSize(canvas.clientWidth, canvas.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
 
-    // Lighting
-    scene.add(new THREE.AmbientLight(0xffb6c1, 0.7));
-    const dirLight = new THREE.DirectionalLight(0xffc0cb, 1);
-    dirLight.position.set(5, 5, 5);
-    scene.add(dirLight);
+    // Soft pink ambient and directional light
+    const ambientLight = new THREE.AmbientLight(0xffb6c1, 0.7);
+    const directionalLight = new THREE.DirectionalLight(0xffc0cb, 1);
+    directionalLight.position.set(5, 5, 5);
+    scene.add(ambientLight, directionalLight);
 
-    // Heart shape (upright, smooth, standing on tip)
+    // Create a smooth 3D heart shape
+    const x = 0, y = 0;
     const heartShape = new THREE.Shape();
-    heartShape.moveTo(0, 0);
-    heartShape.bezierCurveTo(0, 1.5, -1.5, 2.5, -3, 1.2);
-    heartShape.bezierCurveTo(-4, 0, -3, -2, 0, -3);
-    heartShape.bezierCurveTo(3, -2, 4, 0, 3, 1.2);
-    heartShape.bezierCurveTo(1.5, 2.5, 0, 1.5, 0, 0);
+    heartShape.moveTo(x + 0, y + 2);
+    heartShape.bezierCurveTo(x + 2, y + 3.5, x + 4, y + 1.5, x + 0, y - 2);
+    heartShape.bezierCurveTo(x - 4, y + 1.5, x - 2, y + 3.5, x + 0, y + 2);
 
     const extrudeSettings = {
       depth: 1,
@@ -132,56 +147,25 @@
     });
 
     const heart = new THREE.Mesh(geometry, material);
-    heart.rotation.x = Math.PI * 0.1; // slight tilt
+    heart.rotation.x = Math.PI;       // make upright
+    heart.rotation.z = Math.PI;       // stand on bottom tip
     scene.add(heart);
 
-    // 3D Text front/back
-    const loader = new THREE.FontLoader();
-    loader.load('https://cdn.jsdelivr.net/npm/three@0.158.0/examples/fonts/helvetiker_regular.typeface.json', function(font) {
-      const textOptions = {
-        font,
-        size: 0.7,
-        height: 0.1,
-        bevelEnabled: true,
-        bevelThickness: 0.02,
-        bevelSize: 0.01
-      };
-      const textMat = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        emissive: 0xffb6c1,
-        emissiveIntensity: 0.3
-      });
-
-      const textFront = new THREE.Mesh(new THREE.TextGeometry("J+R", textOptions), textMat);
-      textFront.position.set(-1.0, 0, 0.55);
-      scene.add(textFront);
-
-      const textBack = new THREE.Mesh(new THREE.TextGeometry("J+R", textOptions), textMat);
-      textBack.position.set(-1.0, 0, -0.65);
-      textBack.rotation.y = Math.PI;
-      scene.add(textBack);
-    });
-
-    /* ========== ANIMATION LOOP ========== */
+    // Animation loop
     function animate() {
       requestAnimationFrame(animate);
-      heart.rotation.y += 0.005;
-      scene.traverse(obj => {
-        if (obj.geometry && obj.geometry.type === "TextGeometry") obj.rotation.y += 0.005;
-      });
+      heart.rotation.y += 0.005; // slow spin
       renderer.render(scene, camera);
     }
     animate();
 
-    /* ========== RESPONSIVENESS ========== */
-    function resize() {
+    // Handle resizing
+    window.addEventListener("resize", () => {
       const size = Math.min(window.innerWidth, window.innerHeight) * 0.5;
       renderer.setSize(size, size);
       camera.aspect = 1;
       camera.updateProjectionMatrix();
-    }
-    window.addEventListener("resize", resize);
-    resize();
+    });
   </script>
 </body>
 </html>
