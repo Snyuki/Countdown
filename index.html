@@ -6,7 +6,6 @@
   <title>Countdown</title>
 
   <style>
-    /* ========== PAGE STYLING ========== */
     body {
       margin: 0;
       height: 100vh;
@@ -19,7 +18,6 @@
       color: #444;
     }
 
-    /* ========== COUNTDOWN CONTAINER ========== */
     .countdown-container {
       position: relative;
       z-index: 2;
@@ -36,18 +34,13 @@
       font-size: 2.2rem;
       letter-spacing: 2px;
       color: #d46ba0;
-      white-space: nowrap; /* force single line */
+      white-space: nowrap;
     }
 
-    /* Responsive: shrink text if too long */
     @media (max-width: 500px) {
       .timer { font-size: 1.8rem; }
     }
-    @media (max-width: 400px) {
-      .timer { font-size: 1.5rem; }
-    }
 
-    /* ========== 3D HEART CANVAS ========== */
     #heart-canvas {
       position: absolute;
       top: 50%;
@@ -60,22 +53,18 @@
   </style>
 </head>
 <body>
-
-  <!-- 3D HEART BACKGROUND -->
   <canvas id="heart-canvas"></canvas>
 
-  <!-- COUNTDOWN UI -->
   <div class="countdown-container">
     <div id="timer" class="timer">Loading...</div>
   </div>
 
-  <!-- Load Three.js and font loader -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/loaders/FontLoader.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/geometries/TextGeometry.min.js"></script>
 
   <script>
-    /* ========== COUNTDOWN LOGIC ========== */
+    /* ========== COUNTDOWN ========== */
     const timerEl = document.getElementById("timer");
     const targetDate = new Date("2025-12-22T12:50:00");
 
@@ -96,7 +85,7 @@
     const interval = setInterval(updateCountdown, 1000);
     updateCountdown();
 
-    /* ========== THREE.JS HEART SETUP ========== */
+    /* ========== THREE.JS HEART SCENE ========== */
     const canvas = document.getElementById("heart-canvas");
     const scene = new THREE.Scene();
 
@@ -108,17 +97,18 @@
     renderer.setPixelRatio(window.devicePixelRatio);
 
     // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffb6c1, 0.7);
-    const directionalLight = new THREE.DirectionalLight(0xffc0cb, 1);
-    directionalLight.position.set(5, 5, 5);
-    scene.add(ambientLight, directionalLight);
+    scene.add(new THREE.AmbientLight(0xffb6c1, 0.7));
+    const dirLight = new THREE.DirectionalLight(0xffc0cb, 1);
+    dirLight.position.set(5, 5, 5);
+    scene.add(dirLight);
 
-    // Heart shape
-    const x = 0, y = 0;
+    // Heart shape (upright, smooth, standing on tip)
     const heartShape = new THREE.Shape();
-    heartShape.moveTo(x + 0, y + 2);
-    heartShape.bezierCurveTo(x + 2, y + 3.5, x + 4, y + 1.5, x + 0, y - 2);
-    heartShape.bezierCurveTo(x - 4, y + 1.5, x - 2, y + 3.5, x + 0, y + 2);
+    heartShape.moveTo(0, 0);
+    heartShape.bezierCurveTo(0, 1.5, -1.5, 2.5, -3, 1.2);
+    heartShape.bezierCurveTo(-4, 0, -3, -2, 0, -3);
+    heartShape.bezierCurveTo(3, -2, 4, 0, 3, 1.2);
+    heartShape.bezierCurveTo(1.5, 2.5, 0, 1.5, 0, 0);
 
     const extrudeSettings = {
       depth: 1,
@@ -142,64 +132,56 @@
     });
 
     const heart = new THREE.Mesh(geometry, material);
-    heart.rotation.x = Math.PI;
-    heart.rotation.z = Math.PI;
+    heart.rotation.x = Math.PI * 0.1; // slight tilt
     scene.add(heart);
 
-    /* === Add ヨナコ Text on Front and Back === */
+    // 3D Text front/back
     const loader = new THREE.FontLoader();
     loader.load('https://cdn.jsdelivr.net/npm/three@0.158.0/examples/fonts/helvetiker_regular.typeface.json', function(font) {
       const textOptions = {
-        font: font,
-        size: 0.8,
+        font,
+        size: 0.7,
         height: 0.1,
         bevelEnabled: true,
         bevelThickness: 0.02,
         bevelSize: 0.01
       };
-
-      const textMaterial = new THREE.MeshStandardMaterial({
+      const textMat = new THREE.MeshStandardMaterial({
         color: 0xffffff,
         emissive: 0xffb6c1,
         emissiveIntensity: 0.3
       });
 
-      // Front text
-      const textFront = new THREE.Mesh(new THREE.TextGeometry("J+R", textOptions), textMaterial);
-      textFront.position.set(-1.2, 0, 0.6);
-      textFront.rotation.x = Math.PI;
-      textFront.rotation.z = Math.PI;
+      const textFront = new THREE.Mesh(new THREE.TextGeometry("J+R", textOptions), textMat);
+      textFront.position.set(-1.0, 0, 0.55);
       scene.add(textFront);
 
-      // Back text (mirrored)
-      const textBack = new THREE.Mesh(new THREE.TextGeometry("J+R", textOptions), textMaterial);
-      textBack.position.set(-1.2, 0, -0.7);
-      textBack.rotation.x = Math.PI;
-      textBack.rotation.z = Math.PI;
-      textBack.rotation.y = Math.PI; // mirror
+      const textBack = new THREE.Mesh(new THREE.TextGeometry("J+R", textOptions), textMat);
+      textBack.position.set(-1.0, 0, -0.65);
+      textBack.rotation.y = Math.PI;
       scene.add(textBack);
     });
 
-    // Animation
+    /* ========== ANIMATION LOOP ========== */
     function animate() {
       requestAnimationFrame(animate);
       heart.rotation.y += 0.005;
       scene.traverse(obj => {
-        if (obj.geometry && obj.geometry.type === "TextGeometry") {
-          obj.rotation.y += 0.005; // sync text spin
-        }
+        if (obj.geometry && obj.geometry.type === "TextGeometry") obj.rotation.y += 0.005;
       });
       renderer.render(scene, camera);
     }
     animate();
 
-    // Resize handler
-    window.addEventListener("resize", () => {
+    /* ========== RESPONSIVENESS ========== */
+    function resize() {
       const size = Math.min(window.innerWidth, window.innerHeight) * 0.5;
       renderer.setSize(size, size);
       camera.aspect = 1;
       camera.updateProjectionMatrix();
-    });
+    }
+    window.addEventListener("resize", resize);
+    resize();
   </script>
 </body>
 </html>
